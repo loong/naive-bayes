@@ -15,3 +15,6 @@ If any of the above is missing, use
 `pip install [packagename]`
 
 If there are any problems, feel free to whatsapp me: 5329 2129
+
+# Edit data
+Currently `data.csv` is used for training and `sample.csv` is used for prediction
