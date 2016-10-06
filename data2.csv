@@ -1,0 +1,9 @@
+race,income,child,insurance
+black,high,no,yes
+white,high,yes,yes
+white,low,yes,yes
+white,low,yes,yes
+black,low,no,no
+black,low,no,no
+black,low,no,no
+white,low,no,no
