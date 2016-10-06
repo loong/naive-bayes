@@ -13,7 +13,6 @@ def normpdf(x, mean, sd):
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-ignore = ["Name"]
 isCont = ["new"]
 
 className  = '' # last column will alwasy be the target class
@@ -23,9 +22,6 @@ cont       = {}
 
 def addCount(attr, val, cl):
     global counters
-
-    if attr in ignore:
-        return
 
     if attr in isCont:
         if cl not in cont[attr]:
@@ -62,12 +58,11 @@ with open('data.csv', 'rb') as csvfile:
     for attr in firstRow:        
         iMap[i] = attr
 
-        if attr not in ignore:
-            if attr in isCont:
-                cont[attr] = {}
-            else:
-                counters[attr] = {}
-                classCount[attr] = {}
+        if attr in isCont:
+            cont[attr] = {}
+        else:
+            counters[attr] = {}
+            classCount[attr] = {}
             
         i += 1
 
@@ -141,5 +136,4 @@ with open('sample.csv', 'rb') as csvfile:
 
     # todo remove
     pp.pprint(data)
-
 
