@@ -3,33 +3,38 @@ import copy
 
 # @todo remove
 import pprint
-
-className = 'region'
-
 pp = pprint.PrettyPrinter(indent=4)
 
-iMap = {} # indexMap
-data = {}
-counters = {}
+className = '' # last column will alwasy be the target class
+iMap      = {} # indexMap
+data      = {} # @todo data might not be needed
+counters  = {}
 
-def addCount(attr, val):
+def addCount(attr, val, cl):
     global counters
 
-    if attr not in counters[attr]:
+    if val not in counters[attr]:
         counters[attr][val] = 1
     else:
         counters[attr][val] += 1
+
+    if cl not in counters[attr+className]:
+        counters[attr+className][cl] = 1
+    else:
+        counters[attr+className][cl] += 1
         
 # Read and prepare data
 with open('data.csv', 'rb') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
     firstRow = next(reader)
+    className = firstRow[-1] # last column will alwasy be the target class
     
     i = 0
     for label in firstRow:
         iMap[i] = label
         data[label] = []
         counters[label] = {}
+        counters[label+className] = {}
         i += 1
 
     print(data)
@@ -38,8 +43,9 @@ with open('data.csv', 'rb') as csvfile:
     for row in reader:
         i = 0
         for elem in row:
+            print(elem)
             data[iMap[i]].append(elem)
-            addCount(iMap[i], elem)
+            addCount(iMap[i], elem, row[-1])
             i += 1
 
     # todo remove
@@ -48,24 +54,18 @@ with open('data.csv', 'rb') as csvfile:
     
 # Calculate Prior
 # Use Hashtable to get O(1) access
+priors = {}
+total = float(len(counters[className]))
 
-count = {}
-total = 0.0
-for elem in data[className]:
-    total += 1
-    if elem not in count:
-        count[elem] = 1
-    else:
-        count[elem] += 1
+for k in counters[className].keys():
+    priors[k] = counters[className][k]/total
 
-for k in count.keys():
-    count[k] = count[k]/total
-
-print(count)
+print("Priors:")
+print(priors)
 
 # Calculate conditional probabilities
-for attr in iMap.values():
-    
-    # ignore
-    if attr == "Name" or attr == className:
-        continue
+# for cl in counters[className].keys(): # cl = class
+  #  if cl == "Name" or cl == className or cl == "new":
+        
+
+        
