@@ -1,3 +1,6 @@
+# Bonux Points
+This program is written generally to allow a more flexible input. Included is an alternative data set `data2.csv` which has data from the tutorial. Although the fields and number of attributes are different, the program can handle that.
+
 # Prerequisite
 Python 2.7 with the following packges:
 ```

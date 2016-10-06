@@ -1,15 +1,15 @@
+######################################################################
+### @author Long Hoang <long@mindworker.de>
+###
+### itsc: lhoang
+### stuid: 20149163
+###
+### Reachable via email Whatsapp +852 53292129
+
 import csv
 import copy
 import math
 import numpy
-
-# http://stackoverflow.com/questions/12412895/calculate-probability-in-normal-distribution-given-mean-std-in-python
-def normpdf(x, mean, sd):
-    var = float(sd)**2
-    pi = 3.1415926
-    denom = (2*pi*var)**.5
-    num = math.exp(-(float(x)-float(mean))**2/(2*var))
-    return num/denom
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -25,11 +25,20 @@ sampleFile = "sample2.csv"  # data to be classified
 ## globals
 
 className  = '' # last column will alwasy be the target class
-counters   = {}
-classCount = {}
-cont       = {}
+counters   = {} # contains counting of attr labels as HT for O(1) access
+classCount = {} # contains total counts of attr as HT for O(1) access
+cont       = {} 
+contKeys   = []
 ######################################################################
 ### Helpers
+
+# Normpdf taken from http://stackoverflow.com/questions/12412895/calculate-probability-in-normal-distribution-given-mean-std-in-python
+def normpdf(x, mean, sd):
+    var = float(sd)**2
+    pi = 3.1415926
+    denom = (2*pi*var)**.5
+    num = math.exp(-(float(x)-float(mean))**2/(2*var))
+    return num/denom
 
 def getCond(attr, label, cl):
     if cl not in cond[attr][label]:
@@ -76,6 +85,7 @@ def addCount(attr, val, cl):
 ######################################################################
 ### Read and prepare data
 
+# training
 with open(trainingFile, 'rb') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
     firstRow = next(reader)
@@ -101,20 +111,55 @@ with open(trainingFile, 'rb') as csvfile:
             i += 1
 
     # calc mean and sd
-    print(cont)
     for k in cont.keys():
         for cl in cont[k].keys():
             arr = numpy.array(cont[k][cl])
-            print(arr)
+            
             cont[k][cl] = {}
             cont[k][cl]["mean"] = numpy.mean(arr, axis=0)
             cont[k][cl]["std"] = numpy.std(arr, axis=0)
-                
-    # todo remove
-    pp.pprint(counters)
-    pp.pprint(classCount)
-    pp.pprint(cont)
     
+    # pp.pprint(counters)
+    # pp.pprint(classCount)
+
+    if "new" in cont:
+        print "----------------------------------------------------------------------"
+        print "  Normal Distributions for discretization"
+        print "----------------------------------------------------------------------"        
+        pp.pprint(cont["new"])
+
+# sample
+data = {}
+contData = {}
+with open(sampleFile, 'rb') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+    firstRow = next(reader)
+    
+    iMap = {}
+    i = 0
+    for attr in firstRow:        
+        iMap[i] = attr
+
+        if attr in isCont:
+            contData[attr] = []
+        else:
+            data[attr] = []
+            
+        i += 1
+
+    for row in reader:
+        i = 0
+        for elem in row:
+            attr = iMap[i]
+            if attr in isCont:
+                contData[attr].append(elem)
+            else:
+                data[attr].append(elem)
+            i += 1
+
+    # pp.pprint(data)
+
+    contKeys = contData.keys()
     
 ######################################################################
 ### Calculate Prior
@@ -132,7 +177,7 @@ for k in counters[className].keys():
 print "----------------------------------------------------------------------"
 print "  Priors"
 print "----------------------------------------------------------------------"
-print priors
+pp.pprint(priors)
 
 ######################################################################
 ### Calculate conditional probabilities
@@ -169,6 +214,13 @@ for cl in counters[className].keys():
             val = getCond(attr, label, cl)
             print "  P(", attr, "=", label, "|", cl, ") = ", val
 
+    for attr in cont:
+        for i in range(len(contData[attr])):
+
+            val = normpdf(contData[attr][i], cont[attr][cl]["mean"], cont[attr][cl]["std"])
+            print "  P(", attr, "=", contData[attr][i], "|", cl, ") = ", val
+        
+        
 print "----------------------------------------------------------------------"
 print "  Conditional Probabilities with Laplace according to lecture notes"
 print "----------------------------------------------------------------------"
@@ -181,51 +233,16 @@ for cl in counters[className].keys():
             val = getCondLap(attr, label, cl)
             print "  P(", attr, "=", label, "|", cl, ") = ", val
 
-######################################################################
-### Work with sample data now
-
-# load sampe data
-data = {}
-contData = {}
-with open(sampleFile, 'rb') as csvfile:
-    reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-    firstRow = next(reader)
-    
-    iMap = {}
-    i = 0
-    for attr in firstRow:        
-        iMap[i] = attr
-
-        if attr in isCont:
-            contData[attr] = []
-        else:
-            data[attr] = []
-            
-        i += 1
-
-    for row in reader:
-        i = 0
-        for elem in row:
-            attr = iMap[i]
-            if attr in isCont:
-                contData[attr].append(elem)
-            else:
-                data[attr].append(elem)
-            i += 1
-
-    # todo remove
-    pp.pprint(data)
     
 keys = data.keys()
-contKeys = contData.keys()
 numRows = len(data[keys[0]])
 
 
 for i in range(numRows):
+    print
     print "----------------------------------------------------------------------"
     print "  Sample Row " + str(i)
     print "----------------------------------------------------------------------"
-
 
     rowProbs = []
     rowProbLaps = []
@@ -233,8 +250,7 @@ for i in range(numRows):
     mapBackLaps = {}
     
     for cl in counters[className].keys():
-        rowProb = 1
-        rowProbLap = 1
+        rowProb = rowProbLap = 1
         
         for k in keys:
             val = data[k][i]
@@ -248,7 +264,7 @@ for i in range(numRows):
             
         for k in contKeys:
             val = contData[k][i]
-            prop = normpdf(contData[k][i], cont[k][cl]["mean"], cont[k][cl]["std"])
+            prop = normpdf(val, cont[k][cl]["mean"], cont[k][cl]["std"])
             
             #print "P( "+k+"="+val+" | "+className+"='"+cl+"' ) =   \t\t"+str(prop)
             rowProb *= prop
