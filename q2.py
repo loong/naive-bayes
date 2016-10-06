@@ -29,6 +29,24 @@ className  = '' # last column will alwasy be the target class
 counters   = {}
 classCount = {}
 cont       = {}
+######################################################################
+### Helpers
+
+def getCond(attr, label, cl):
+    if cl not in cond[attr][label]:
+        return 0
+    else:
+        return cond[attr][label][cl]
+
+def getCondLap(attr, label, cl):
+    if cl not in condLap[attr][label]:
+        numAttr = len(counters[className])
+        totalNum = float(counters[className][cl])
+        print label, cl, total
+                
+        return 1 / (totalNum + numAttr)
+    else:
+        return condLap[attr][label][cl]
 
 def addCount(attr, val, cl):
     global counters
@@ -57,7 +75,9 @@ def addCount(attr, val, cl):
     else:
         classCount[attr][val][cl] += 1
         
-# Read and prepare data
+######################################################################
+### Read and prepare data
+
 with open(trainingFile, 'rb') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
     firstRow = next(reader)
@@ -98,8 +118,10 @@ with open(trainingFile, 'rb') as csvfile:
     pp.pprint(cont)
     
     
-# Calculate Prior
-# Use Hashtable to get O(1) access
+######################################################################
+### Calculate Prior
+###
+### Use Hashtable to get O(1) access
 priors = {}
 total = 0.0
 
@@ -108,31 +130,35 @@ for k in counters[className].keys():
     
 for k in counters[className].keys():
     priors[k] = counters[className][k]/total
+    
+print "----------------------------------------------------------------------"
+print "  Priors"
+print "----------------------------------------------------------------------"
+print priors
 
-print("Priors:")
-print(priors)
-
-# Calculate conditional probabilities
+######################################################################
+### Calculate conditional probabilities
 cond = {}
+condLap = {}
 
 for attr in counters.keys():
     if attr == "Name" or attr == className or attr == "new":
         continue
 
     cond[attr] = {}
+    condLap[attr] = {}
     
     for label in counters[attr]:
         cond[attr][label] = {}
+        condLap[attr][label] = {}
         
         for cl in classCount[attr][label].keys():
-            cond[attr][label][cl] = classCount[attr][label][cl]/float(counters[className][cl])
+            numAttr = len(counters[className])
+            totalClass = classCount[attr][label][cl]
+            totalNum = float(counters[className][cl])
+            cond[attr][label][cl] = totalClass / totalNum
+            condLap[attr][label][cl] = (totalClass + 1 ) / (totalNum + numAttr)
 
-def getCond(attr, label, cl):
-    if cl not in cond[attr][label]:
-        return 0
-    else:
-        return cond[attr][label][cl]
-# Print Conditional Propabilities:
 print "----------------------------------------------------------------------"
 print "  Conditional Probabilities"
 print "----------------------------------------------------------------------"
@@ -145,7 +171,17 @@ for cl in counters[className].keys():
             val = getCond(attr, label, cl)
             print "  P(", attr, "=", label, "|", cl, ") = ", val
 
-            
+print "----------------------------------------------------------------------"
+print "  Conditional Probabilities with Laplace according to lecture notes"
+print "----------------------------------------------------------------------"
+
+for cl in counters[className].keys():
+    print "Class ", cl
+
+    for attr in classCount.keys():
+        for label in classCount[attr]:
+            val = getCondLap(attr, label, cl)
+            print "  P(", attr, "=", label, "|", cl, ") = ", val
 
 ######################################################################
 ### Work with sample data now
@@ -194,18 +230,23 @@ for i in range(numRows):
 
 
     rowProbs = []
+    rowProbLaps = []
     mapBack = {}
+    mapBackLaps = {}
+    
     for cl in counters[className].keys():
         rowProb = 1
+        rowProbLap = 1
         
         for k in keys:
             val = data[k][i]
-            prop = 0
-            if cl in cond[k][val]:
-                prop = cond[k][val][cl]
+
+            prop = getCond(k, val, cl)
+            propLap = getCondLap(k, val, cl)
 
             #print "P( "+k+"='"+val+"' | "+className+"='"+cl+"' ) = \t" + str(prop)
             rowProb *= prop
+            rowProbLap *= propLap
             
         for k in contKeys:
             val = contData[k][i]
@@ -213,14 +254,30 @@ for i in range(numRows):
             
             #print "P( "+k+"="+val+" | "+className+"='"+cl+"' ) =   \t\t"+str(prop)
             rowProb *= prop
+            rowProbLap *= prop
 
         p = rowProb*priors[cl]
+        pLap = rowProbLap*priors[cl]
         rowProbs.append(p)
-        mapBack[p] = cl
-        print "P( sample |", cl, ") =", rowProb
+        rowProbLaps.append(pLap)
 
-    print
+        mapBack[p] = cl
+        mapBackLaps[pLap] = cl
+
+    print "No correction:"
+    print "P( sample |", cl, ") =", rowProb
     print "max of", rowProbs
 
     m = max(rowProbs)
     print m, "=>", mapBack[m]
+
+    print
+    print "With laplacian correction:"
+    print "P( sample |", cl, ") =", rowProbLap
+    print "max of", rowProbLaps
+
+    m = max(rowProbLaps)
+    print m, "=>", mapBackLaps[m]
+
+
+
