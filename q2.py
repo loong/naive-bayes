@@ -3,6 +3,7 @@ import copy
 import math
 import numpy
 
+# http://stackoverflow.com/questions/12412895/calculate-probability-in-normal-distribution-given-mean-std-in-python
 def normpdf(x, mean, sd):
     var = float(sd)**2
     pi = 3.1415926
@@ -14,9 +15,15 @@ def normpdf(x, mean, sd):
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-isCont = ["new"]
-trainingFile = "data2.csv"
-sampleFile = "sample2.csv"
+######################################################################
+## configs values
+isCont = ["new"]           # mark continuous fields
+
+trainingFile = "data2.csv"  # input data
+sampleFile = "sample2.csv"  # data to be classified
+
+######################################################################
+## globals
 
 className  = '' # last column will alwasy be the target class
 counters   = {}
@@ -29,8 +36,8 @@ def addCount(attr, val, cl):
     if attr in isCont:
         if cl not in cont[attr]:
             cont[attr][cl] = []
-        else:
-            cont[attr][cl].append(float(val))
+
+        cont[attr][cl].append(float(val))
         return
         
 
@@ -76,9 +83,11 @@ with open(trainingFile, 'rb') as csvfile:
             i += 1
 
     # calc mean and sd
+    print(cont)
     for k in cont.keys():
         for cl in cont[k].keys():
             arr = numpy.array(cont[k][cl])
+            print(arr)
             cont[k][cl] = {}
             cont[k][cl]["mean"] = numpy.mean(arr, axis=0)
             cont[k][cl]["std"] = numpy.std(arr, axis=0)
@@ -86,7 +95,6 @@ with open(trainingFile, 'rb') as csvfile:
     # todo remove
     pp.pprint(counters)
     pp.pprint(classCount)
-    print("Continous")
     pp.pprint(cont)
     
     
@@ -114,15 +122,33 @@ for attr in counters.keys():
     cond[attr] = {}
     
     for label in counters[attr]:
-        total = counters[attr][label]
-
+        cond[attr][label] = {}
+        
         for cl in classCount[attr][label].keys():
-            print label + " " + cl + " " + str(classCount[attr][label][cl]),
-            print " " + str(total)
+            cond[attr][label][cl] = classCount[attr][label][cl]/float(counters[className][cl])
 
-            cond[attr][cl] = classCount[attr][label][cl]/float(total)
+def getCond(attr, label, cl):
+    if cl not in cond[attr][label]:
+        return 0
+    else:
+        return cond[attr][label][cl]
+# Print Conditional Propabilities:
+print "----------------------------------------------------------------------"
+print "  Conditional Probabilities"
+print "----------------------------------------------------------------------"
 
-pp.pprint(cond)
+for cl in counters[className].keys():
+    print "Class ", cl
+
+    for attr in classCount.keys():
+        for label in classCount[attr]:
+            val = getCond(attr, label, cl)
+            print "  P(", attr, "=", label, "|", cl, ") = ", val
+
+            
+
+######################################################################
+### Work with sample data now
 
 # load sampe data
 data = {}
@@ -160,20 +186,41 @@ keys = data.keys()
 contKeys = contData.keys()
 numRows = len(data[keys[0]])
 
+
 for i in range(numRows):
     print "----------------------------------------------------------------------"
-    print "Sample Row " + str(i)
+    print "  Sample Row " + str(i)
     print "----------------------------------------------------------------------"
+
+
+    rowProbs = []
+    mapBack = {}
     for cl in counters[className].keys():
+        rowProb = 1
+        
         for k in keys:
             val = data[k][i]
-            prop = cond[k][cl]
+            prop = 0
+            if cl in cond[k][val]:
+                prop = cond[k][val][cl]
 
-            print "P( "+k+"='"+val+"' | "+className+"='"+cl+"' ) = \t"+str(prop)
-
+            #print "P( "+k+"='"+val+"' | "+className+"='"+cl+"' ) = \t" + str(prop)
+            rowProb *= prop
+            
         for k in contKeys:
             val = contData[k][i]
             prop = normpdf(contData[k][i], cont[k][cl]["mean"], cont[k][cl]["std"])
             
-            print "P( "+k+"="+val+" | "+className+"='"+cl+"' ) =   \t\t"+str(prop)
-    
+            #print "P( "+k+"="+val+" | "+className+"='"+cl+"' ) =   \t\t"+str(prop)
+            rowProb *= prop
+
+        p = rowProb*priors[cl]
+        rowProbs.append(p)
+        mapBack[p] = cl
+        print "P( sample |", cl, ") =", rowProb
+
+    print
+    print "max of", rowProbs
+
+    m = max(rowProbs)
+    print m, "=>", mapBack[m]
