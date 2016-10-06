@@ -11,7 +11,6 @@ def normpdf(x, mean, sd):
     num = math.exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
 
-# @todo remove
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -42,7 +41,6 @@ def getCondLap(attr, label, cl):
     if cl not in condLap[attr][label]:
         numAttr = len(counters[className])
         totalNum = float(counters[className][cl])
-        print label, cl, total
                 
         return 1 / (totalNum + numAttr)
     else:
@@ -264,20 +262,19 @@ for i in range(numRows):
         mapBack[p] = cl
         mapBackLaps[pLap] = cl
 
-    print "No correction:"
-    print "P( sample |", cl, ") =", rowProb
-    print "max of", rowProbs
+        print "P( sample |", cl, ") =", rowProb
+        print "P( sample |", cl, ") =", rowProbLap, "# with laplace"
 
     m = max(rowProbs)
-    print m, "=>", mapBack[m]
-
     print
-    print "With laplacian correction:"
-    print "P( sample |", cl, ") =", rowProbLap
-    print "max of", rowProbLaps
+    print "No correction:"
+    print "--------------"
+    print "max of", rowProbs, "=>", m
+    print "Prediction =>", mapBack[m]
 
     m = max(rowProbLaps)
-    print m, "=>", mapBackLaps[m]
-
-
-
+    print
+    print "With correction:"
+    print "----------------"
+    print "max of", rowProbLaps, "=>", m
+    print "Prediction =>", mapBackLaps[m]
