@@ -17,8 +17,6 @@ ignore = ["Name"]
 isCont = ["new"]
 
 className  = '' # last column will alwasy be the target class
-iMap       = {} # indexMap
-data       = {} # @todo data might not be needed
 counters   = {}
 classCount = {}
 cont       = {}
@@ -58,11 +56,11 @@ with open('data.csv', 'rb') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
     firstRow = next(reader)
     className = firstRow[-1] # last column will alwasy be the target class
-    
+
+    iMap = {} # indexMap
     i = 0
     for attr in firstRow:        
         iMap[i] = attr
-        data[attr] = []
 
         if attr not in ignore:
             if attr in isCont:
@@ -76,11 +74,7 @@ with open('data.csv', 'rb') as csvfile:
     for row in reader:
         i = 0
         for elem in row:
-            data[iMap[i]].append(elem)
             addCount(iMap[i], elem, row[-1])
-
-            if attr == "new":
-                cont
             i += 1
 
     # todo remove
@@ -116,3 +110,36 @@ for attr in counters.keys():
             cond[attr][cl] = classCount[attr][label][cl]/float(total)
 
 pp.pprint(cond)
+
+# load sampe data
+data = {}
+contData = {}
+with open('sample.csv', 'rb') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+    firstRow = next(reader)
+    
+    iMap = {}
+    i = 0
+    for attr in firstRow:        
+        iMap[i] = attr
+
+        if attr in isCont:
+            contData[attr] = []
+        else:
+            data[attr] = []
+        i += 1
+
+    for row in reader:
+        i = 0
+        for elem in row:
+            attr = iMap[i]
+            if attr in isCont:
+                contData[attr].append(elem)
+            else:
+                data[attr].append(elem)
+            i += 1
+
+    # todo remove
+    pp.pprint(data)
+
+
