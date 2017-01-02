@@ -18,8 +18,8 @@ pp = pprint.PrettyPrinter(indent=4)
 ## configs values
 isCont = ["new"]           # mark continuous fields
 
-trainingFile = "data2.csv"  # input data
-sampleFile = "sample2.csv"  # data to be classified
+trainingFile = "data.csv"  # input data
+sampleFile = "sample.csv"  # data to be classified
 
 ######################################################################
 ## globals
@@ -29,10 +29,11 @@ counters   = {} # contains counting of attr labels as HT for O(1) access
 classCount = {} # contains total counts of attr as HT for O(1) access
 cont       = {} 
 contKeys   = []
+
 ######################################################################
 ### Helpers
 
-# Normpdf taken from http://stackoverflow.com/questions/12412895/calculate-probability-in-normal-distribution-given-mean-std-in-python
+# normpdf taken from http://stackoverflow.com/questions/12412895/calculate-probability-in-normal-distribution-given-mean-std-in-python
 def normpdf(x, mean, sd):
     var = float(sd)**2
     pi = 3.1415926
@@ -40,12 +41,15 @@ def normpdf(x, mean, sd):
     num = math.exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
 
+# getCond is a getter, which handles the case if there is no data for
+# a combination
 def getCond(attr, label, cl):
     if cl not in cond[attr][label]:
         return 0
     else:
         return cond[attr][label][cl]
 
+# getCondLap similar to getCond, just using laplacian correction
 def getCondLap(attr, label, cl):
     if cl not in condLap[attr][label]:
         numAttr = len(counters[className])
@@ -55,6 +59,8 @@ def getCondLap(attr, label, cl):
     else:
         return condLap[attr][label][cl]
 
+# addCount is used to count all the needed elements with the help of
+# hash tables so we only need to iterate through the data once
 def addCount(attr, val, cl):
     global counters
 
@@ -104,13 +110,14 @@ with open(trainingFile, 'rb') as csvfile:
             
         i += 1
 
+    # read in all data
     for row in reader:
         i = 0
         for elem in row:
             addCount(iMap[i], elem, row[-1])
             i += 1
 
-    # calc mean and sd
+    # calc mean and sd for continous attr
     for k in cont.keys():
         for cl in cont[k].keys():
             arr = numpy.array(cont[k][cl])
@@ -232,12 +239,23 @@ for cl in counters[className].keys():
         for label in classCount[attr]:
             val = getCondLap(attr, label, cl)
             print "  P(", attr, "=", label, "|", cl, ") = ", val
+            
 
-    
+    for attr in cont:
+        for i in range(len(contData[attr])):
+            
+            val = normpdf(contData[attr][i], cont[attr][cl]["mean"], cont[attr][cl]["std"])
+            print "  P(", attr, "=", contData[attr][i], "|", cl, ") = ", val
+
+
+
+######################################################################
+### Process sample data
+
 keys = data.keys()
 numRows = len(data[keys[0]])
 
-
+# loop through each row indivdually
 for i in range(numRows):
     print
     print "----------------------------------------------------------------------"
@@ -248,30 +266,40 @@ for i in range(numRows):
     rowProbLaps = []
     mapBack = {}
     mapBackLaps = {}
-    
+
+    # get conditional probabilities for each attr to class (here
+    # region) pair and then make the product
     for cl in counters[className].keys():
         rowProb = rowProbLap = 1
         
         for k in keys:
             val = data[k][i]
 
+            # get conditional probability
             prop = getCond(k, val, cl)
             propLap = getCondLap(k, val, cl)
 
             #print "P( "+k+"='"+val+"' | "+className+"='"+cl+"' ) = \t" + str(prop)
+
+            # make product
             rowProb *= prop
             rowProbLap *= propLap
             
         for k in contKeys:
+            
+            # get conditional probability
             val = contData[k][i]
             prop = normpdf(val, cont[k][cl]["mean"], cont[k][cl]["std"])
             
             #print "P( "+k+"="+val+" | "+className+"='"+cl+"' ) =   \t\t"+str(prop)
+
+            # make product
             rowProb *= prop
             rowProbLap *= prop
 
         p = rowProb*priors[cl]
         pLap = rowProbLap*priors[cl]
+        
         rowProbs.append(p)
         rowProbLaps.append(pLap)
 
@@ -281,6 +309,8 @@ for i in range(numRows):
         print "P( sample |", cl, ") =", rowProb
         print "P( sample |", cl, ") =", rowProbLap, "# with laplace"
 
+
+    # do prediciton
     m = max(rowProbs)
     print
     print "No correction:"
