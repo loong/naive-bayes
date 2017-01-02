@@ -1,20 +1,41 @@
-# Bonux Points
-This program is written generally to allow a more flexible input. Included is an alternative data set `data2.csv` which has data from the tutorial. Although the fields and number of attributes are different, the program can handle that.
+# Naive Bayes Classifier with Laplacian Correction
 
-# Prerequisite
-Python 2.7 with the following packges:
+This project provides a naive bayes classifier features:
+ - Flexible Data Input
+ - Laplacian Correction
+ - Hashtable Counting
+ - Gaussian Distribution Modeling for Continuous Values
+
+## How to use it
+
+### Install prerequisite
 ```
- - numpy
- - pprint
- - csv  (included in std lib)
- - math (included in std lib)
- - copy (included in std lib)
+pip install -r requirements.txt
 ```
 
-If any of the above is missing, use
-`pip install [packagename]`
+### Run classifier
+You need python 2.7, and the classifier can be run as follows:
+```
+python bayes.py
+```
 
-If there are any problems, feel free to whatsapp me: 5329 2129
+Note: `data.csv` is used for training and `sample.csv` is used for prediction.
 
-# Edit data
-Currently `data.csv` is used for training and `sample.csv` is used for prediction
+## About the features
+
+### Flexible Data Input
+The classifier accept any data in table form.
+
+#### Working with Continous Values
+By default data is used as nominal / discrete values. If continuous values are used, you must add the name of the column to the `isCont` list in the code under `config values`.
+
+Given are two different data sets `data1.csv` and `data2.csv` for demonstration.
+
+### Laplacian Correction
+Laplacian Correction is used to avoid distortion caused by zero-occurences.
+
+### Hashtable Counting
+Efficient counting with three levels of hashtables, so that all counting can be done in a single data scan.
+
+### Gaussian Distribution Modeling for Continuous Values
+Continuous data are fitted into a Normal distribution. The PDF of resulting Normal distribution, will then be used instead of the conditional probability.
