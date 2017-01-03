@@ -1,49 +1,47 @@
-######################################################################
-### @author Long Hoang <long@mindworker.de>
-###
-### itsc: lhoang
-### stuid: 20149163
-###
-### Reachable via email Whatsapp +852 53292129
+""" Naive Bayes Classifier with Laplace Correction"""
 
 import csv
 import copy
 import math
+import pprint
+
 import numpy
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
-
 ######################################################################
-## configs values
-isCont = ["new"]           # mark continuous fields
+## Config constants
+CONT_FIELDS = ["new"]           # mark continuous fields
 
-trainingFile = "data.csv"  # input data
-sampleFile = "sample.csv"  # data to be classified
+TRAINING_FILE = "data.csv"  # input data
+SAMPLE_FILE = "sample.csv"  # data to be classified
 
+pretty = pprint.PrettyPrinter(indent=4)
 ######################################################################
 ## globals
 
-className  = '' # last column will alwasy be the target class
-counters   = {} # contains counting of attr labels as HT for O(1) access
+className = ''  # last column will alwasy be the target class
+counters = {}   # contains counting of attr labels as HT for O(1) access
 classCount = {} # contains total counts of attr as HT for O(1) access
-cont       = {} 
-contKeys   = []
+cont = {} 
+contKeys = []
 
 ######################################################################
 ### Helpers
 
-# normpdf taken from http://stackoverflow.com/questions/12412895/calculate-probability-in-normal-distribution-given-mean-std-in-python
 def normpdf(x, mean, sd):
+    """ Normal probability density function taken from
+        http://stackoverflow.com/questions/12412895/
+    """
+    
     var = float(sd)**2
     pi = 3.1415926
     denom = (2*pi*var)**.5
     num = math.exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
 
-# getCond is a getter, which handles the case if there is no data for
-# a combination
+
 def getCond(attr, label, cl):
+    """Gets, which handles the case if there is no data for a combination
+    """
     if cl not in cond[attr][label]:
         return 0
     else:
@@ -64,7 +62,7 @@ def getCondLap(attr, label, cl):
 def addCount(attr, val, cl):
     global counters
 
-    if attr in isCont:
+    if attr in CONT_FIELDS:
         if cl not in cont[attr]:
             cont[attr][cl] = []
 
@@ -92,7 +90,7 @@ def addCount(attr, val, cl):
 ### Read and prepare data
 
 # training
-with open(trainingFile, 'rb') as csvfile:
+with open(TRAINING_FILE, 'rb') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
     firstRow = next(reader)
     className = firstRow[-1] # last column will alwasy be the target class
@@ -102,7 +100,7 @@ with open(trainingFile, 'rb') as csvfile:
     for attr in firstRow:        
         iMap[i] = attr
 
-        if attr in isCont:
+        if attr in CONT_FIELDS:
             cont[attr] = {}
         else:
             counters[attr] = {}
@@ -126,19 +124,19 @@ with open(trainingFile, 'rb') as csvfile:
             cont[k][cl]["mean"] = numpy.mean(arr, axis=0)
             cont[k][cl]["std"] = numpy.std(arr, axis=0)
     
-    # pp.pprint(counters)
-    # pp.pprint(classCount)
+    # pretty.pprint(counters)
+    # pretty.pprint(classCount)
 
     if "new" in cont:
         print "----------------------------------------------------------------------"
         print "  Normal Distributions for discretization"
         print "----------------------------------------------------------------------"        
-        pp.pprint(cont["new"])
+        pretty.pprint(cont["new"])
 
 # sample
 data = {}
 contData = {}
-with open(sampleFile, 'rb') as csvfile:
+with open(SAMPLE_FILE, 'rb') as csvfile:
     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
     firstRow = next(reader)
     
@@ -147,7 +145,7 @@ with open(sampleFile, 'rb') as csvfile:
     for attr in firstRow:        
         iMap[i] = attr
 
-        if attr in isCont:
+        if attr in CONT_FIELDS:
             contData[attr] = []
         else:
             data[attr] = []
@@ -158,13 +156,11 @@ with open(sampleFile, 'rb') as csvfile:
         i = 0
         for elem in row:
             attr = iMap[i]
-            if attr in isCont:
+            if attr in CONT_FIELDS:
                 contData[attr].append(elem)
             else:
                 data[attr].append(elem)
             i += 1
-
-    # pp.pprint(data)
 
     contKeys = contData.keys()
     
@@ -184,14 +180,14 @@ for k in counters[className].keys():
 print "----------------------------------------------------------------------"
 print "  Priors"
 print "----------------------------------------------------------------------"
-pp.pprint(priors)
+pretty.pprint(priors)
 
 ######################################################################
 ### Calculate conditional probabilities
 cond = {}
 condLap = {}
 
-for attr in counters.keys():
+for attr in counters:
     if attr == "Name" or attr == className or attr == "new":
         continue
 
@@ -207,7 +203,7 @@ for attr in counters.keys():
             totalClass = classCount[attr][label][cl]
             totalNum = float(counters[className][cl])
             cond[attr][label][cl] = totalClass / totalNum
-            condLap[attr][label][cl] = (totalClass + 1 ) / (totalNum + numAttr)
+            condLap[attr][label][cl] = (totalClass + 1) / (totalNum + numAttr)
 
 print "----------------------------------------------------------------------"
 print "  Conditional Probabilities"
