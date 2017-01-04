@@ -15,6 +15,7 @@ TRAINING_FILE = "data.csv"  # input data
 SAMPLE_FILE = "sample.csv"  # data to be classified
 
 pretty = pprint.PrettyPrinter(indent=4)
+
 ######################################################################
 ## globals
 
@@ -36,17 +37,18 @@ def normpdf(x, mean, sd):
     pi = 3.1415926
     denom = (2*pi*var)**.5
     num = math.exp(-(float(x)-float(mean))**2/(2*var))
+    
     return num/denom
 
 # getCond similar to getCond, just using laplacian correction
 def getCond(attr, label, cl):
-    if cl not in condLap[attr][label]:
+    if cl not in cond[attr][label]:
         numAttr = len(counters[className])
         totalNum = float(counters[className][cl])
                 
         return 1 / (totalNum + numAttr)
     else:
-        return condLap[attr][label][cl]
+        return cond[attr][label][cl]
 
 # addCount is used to count all the needed elements with the help of
 # hash tables so we only need to iterate through the data once
@@ -115,9 +117,6 @@ with open(TRAINING_FILE, 'rb') as csvfile:
             cont[k][cl]["mean"] = numpy.mean(arr, axis=0)
             cont[k][cl]["std"] = numpy.std(arr, axis=0)
     
-    # pretty.pprint(counters)
-    # pretty.pprint(classCount)
-
     if "new" in cont:
         print "----------------------------------------------------------------------"
         print "  Normal Distributions for discretization"
@@ -175,22 +174,22 @@ pretty.pprint(priors)
 
 ######################################################################
 ### Calculate conditional probabilities
-condLap = {}
+cond = {}
 
 for attr in counters:
     if attr == "Name" or attr == className or attr == "new":
         continue
 
-    condLap[attr] = {}
+    cond[attr] = {}
     
     for label in counters[attr]:
-        condLap[attr][label] = {}
+        cond[attr][label] = {}
         
         for cl in classCount[attr][label].keys():
             numAttr = len(counters[className])
             totalClass = classCount[attr][label][cl]
             totalNum = float(counters[className][cl])
-            condLap[attr][label][cl] = (totalClass + 1) / (totalNum + numAttr)        
+            cond[attr][label][cl] = (totalClass + 1) / (totalNum + numAttr)        
         
 print "----------------------------------------------------------------------"
 print "  Conditional Probabilities with Laplace Correction"
@@ -203,7 +202,6 @@ for cl in counters[className].keys():
         for label in classCount[attr]:
             val = getCond(attr, label, cl)
             print "  P(", attr, "=", label, "|", cl, ") = ", val
-            
 
     for attr in cont:
         for i in range(len(contData[attr])):
@@ -211,7 +209,7 @@ for cl in counters[className].keys():
             val = normpdf(contData[attr][i], cont[attr][cl]["mean"], cont[attr][cl]["std"])
             print "  P(", attr, "=", contData[attr][i], "|", cl, ") = ", val
 
-
+            
 ######################################################################
 ### Process sample data
 
@@ -226,35 +224,27 @@ for i in range(numRows):
     print "----------------------------------------------------------------------"
 
     rowProbLaps = []
-    mapBackLaps = {}
+    mapBack = {}
 
     # get conditional probabilities for each attr to class (here
     # region) pair and then make the product
     for cl in counters[className].keys():
         rowProbLap = 1
-        
+
+        # factor in conditional probabilities from discrete values
         for k in keys:
             val = data[k][i]
+            rowProbLap *= getCond(k, val, cl)
 
-            # get conditional probability
-            prop = getCond(k, val, cl)
-
-            # make product
-            rowProbLap *= prop
-            
+        # factor in normal probabilities of continous values
         for k in contKeys:
-            
-            # get conditional probability
             val = contData[k][i]
-            prop = normpdf(val, cont[k][cl]["mean"], cont[k][cl]["std"])
-            
-            # make product
-            rowProbLap *= prop
+            rowProbLap *= normpdf(val, cont[k][cl]["mean"], cont[k][cl]["std"])
 
-        pLap = rowProbLap*priors[cl]        
+        pLap = rowProbLap*priors[cl]
         rowProbLaps.append(pLap)
 
-        mapBackLaps[pLap] = cl
+        mapBack[pLap] = cl
 
         print "P( sample |", cl, ") =", rowProbLap
 
@@ -262,4 +252,4 @@ for i in range(numRows):
     m = max(rowProbLaps)
     print
     print "max of", rowProbLaps, "=>", m
-    print "Prediction =>", mapBackLaps[m]
+    print "Prediction =>", mapBack[m]
